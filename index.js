@@ -25,49 +25,49 @@ module.exports = serve
  * @api public
  */
 
-function serve (root, opts) {
-  opts = Object.assign({}, opts)
+function serve(root, opts) {
+    opts = Object.assign({}, opts)
 
-  assert(root, 'root directory is required to serve files')
+    assert(root, 'root directory is required to serve files')
 
-  // options
-  debug('static "%s" %j', root, opts)
-  opts.root = resolve(root)
-  if (opts.index !== false) opts.index = opts.index || 'index.html'
+    // options
+    debug('static "%s" %j', root, opts)
+    opts.root = resolve(root)
+    if (opts.index !== false) opts.index = opts.index || 'index.html'
 
-  if (!opts.defer) {
-    return async function serve (ctx, next) {
-      let done = false
+    if (!opts.defer) {
+        return async function serve(ctx, next) {
+            let done = false
 
-      if (ctx.method === 'HEAD' || ctx.method === 'GET') {
-        try {
-          done = await send(ctx, ctx.path, opts)
-        } catch (err) {
-          if (err.status !== 404) {
-            throw err
-          }
+            if (ctx.method === 'HEAD' || ctx.method === 'GET') {
+                try {
+                    done = await send(ctx, ctx.path, opts)
+                } catch (err) {
+                    if (err.status !== 404) {
+                        throw err
+                    }
+                }
+            }
+
+            if (!done) {
+                await next()
+            }
         }
-      }
+    }
 
-      if (!done) {
+    return async function serve(ctx, next) {
         await next()
-      }
+
+        if (ctx.method !== 'HEAD' && ctx.method !== 'GET') return
+        // response is already handled
+        if (ctx.body != null || ctx.status !== 404) return // eslint-disable-line
+
+        try {
+            await send(ctx, ctx.path, opts)
+        } catch (err) {
+            if (err.status !== 404) {
+                throw err
+            }
+        }
     }
-  }
-
-  return async function serve (ctx, next) {
-    await next()
-
-    if (ctx.method !== 'HEAD' && ctx.method !== 'GET') return
-    // response is already handled
-    if (ctx.body != null || ctx.status !== 404) return // eslint-disable-line
-
-    try {
-      await send(ctx, ctx.path, opts)
-    } catch (err) {
-      if (err.status !== 404) {
-        throw err
-      }
-    }
-  }
 }
